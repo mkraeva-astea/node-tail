@@ -58,7 +58,14 @@ class Tail extends events.EventEmitter
 
   watchEvent: (e) ->
     if e is 'change'
-      stats = fs.statSync(@filename)
+      try
+        stats = fs.statSync(@filename)
+      catch error
+        # When the file we're watching is deleted (not renamed/moved), `fs.statSync` throws an error
+        @unwatch()
+        @logger.error("fs.statSync error for #{@filename}. File not available.") if @logger
+        @emit("error", error)
+        return
       @pos = stats.size if stats.size < @pos #scenario where texts is not appended but it's actually a w+
       if stats.size > @pos
         @queue.push({start: @pos, end: stats.size})
